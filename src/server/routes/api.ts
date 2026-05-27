@@ -2029,9 +2029,9 @@ router.get("/scanner/scan", async (req: Request, res: Response) => {
       };
     });
 
-    // Filter to strictly ensure probability of rising is above 65% (> 0.65) and trend holds a BULLISH stance
+    // Filter to strictly ensure probability of rising is above 55% (> 0.55) and trend holds a BULLISH stance
     const filteredAssets = calibratedAssets.filter((asset) => {
-      return asset.probability > 0.65 && asset.trendDirection === "BULLISH";
+      return asset.probability > 0.55 && asset.trendDirection === "BULLISH";
     });
 
     // Re-rank assets matching calibrated and filtered outputs

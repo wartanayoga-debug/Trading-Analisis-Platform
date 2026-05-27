@@ -1,6 +1,7 @@
 import { FeatureStore } from "./feature_store";
 import { DatasetBuilder } from "./dataset_builder";
 import { ModelTrainingService } from "./model_training";
+import { MarketDataEngine } from "./data.engine";
 
 export class RealTrainingPipeline {
   private static instance: RealTrainingPipeline;
@@ -26,19 +27,39 @@ export class RealTrainingPipeline {
       `[Training Pipeline] Initiating institutional learning loop...`,
     );
 
-    // In a real scenario we grab features for all tickers
     // Grab all raw features from SQLite
     const rawFeatures = this.featureStore.getFeaturesRaw();
-    // Reformat slightly to simulate the previous structures for the pipeline
-    // This maintains continuity of the demo while utilizing SQLite
-    const records: any[] = rawFeatures.map((row: any) => ({
-      ticker: row.asset,
-      timestamp: row.timestamp,
-      features: {
-        [row.feature_name]: row.feature_value,
-      },
-      candles: [{ close: 100 }, { close: 105 }], // Mock candles for validation
-    }));
+
+    // Group raw features by timestamp and asset to reconstruct the feature object
+    const groupedRecords: Record<string, any> = {};
+    for (const row of rawFeatures) {
+        const key = `${row.asset}_${row.timestamp}`;
+        if (!groupedRecords[key]) {
+            groupedRecords[key] = {
+                ticker: row.asset,
+                timestamp: row.timestamp,
+                features: {}
+            };
+        }
+        groupedRecords[key].features[row.feature_name] = row.feature_value;
+    }
+
+    const uniqueAssets = Array.from(new Set(Object.values(groupedRecords).map((r: any) => r.ticker)));
+    const candleMap: Record<string, any[]> = {};
+    const marketEngine = MarketDataEngine.getInstance();
+    
+    for (const asset of uniqueAssets) {
+        // Determine asset class dynamically (simple heuristic)
+        const assetClass = (asset as string).endsWith(".JK") ? "IDX" : "CRYPTO";
+        candleMap[asset as string] = await marketEngine.getHistory(asset as string, assetClass, "1h", 50);
+    }
+
+    const records: any[] = Object.values(groupedRecords).map((record: any) => {
+        return {
+          ...record,
+          candles: candleMap[record.ticker], 
+        }
+    });
 
     if (records.length < 20) {
       console.log(
@@ -66,3 +87,4 @@ export class RealTrainingPipeline {
     console.log(`[Training Pipeline] Institutional training epoch completed.`);
   }
 }
+

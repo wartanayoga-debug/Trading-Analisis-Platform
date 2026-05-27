@@ -67,11 +67,12 @@ export class MarketDataEngine {
       } else {
         candles = await this.fetchIDXCandles(ticker, timeframe, limit);
       }
-    } catch (error) {
-      console.error(
-        `[MarketDataEngine] Failed fetching candle data for ${ticker}:`,
-        error,
-      );
+    } catch (error: any) {
+      if (error?.message?.includes("unavailable") || error?.message?.includes("Binance") || error?.message?.includes("Yahoo")) {
+          console.warn(`[MarketDataEngine] Fallback data activated for ${ticker}: ${error.message}`);
+      } else {
+          console.warn(`[MarketDataEngine] Fallback data activated for ${ticker}:`, error.message || error);
+      }
       // Failover to dynamic local simulated structure as a safety hedge rather than crashing
       candles = this.generateFallbackCandles(ticker, limit);
     }
@@ -139,9 +140,10 @@ export class MarketDataEngine {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Yahoo Finance status endpoint exception: ${response.status}`,
-      );
+      if (response.status === 404 || response.status === 500) {
+          throw new Error(`Yahoo Finance data unavailable for ${ticker} (${response.status})`);
+      }
+      throw new Error(`Yahoo Finance status endpoint exception: ${response.status}`);
     }
 
     const resJson = await response.json();
