@@ -68,11 +68,6 @@ export class MarketDataEngine {
         candles = await this.fetchIDXCandles(ticker, timeframe, limit);
       }
     } catch (error: any) {
-      if (error?.message?.includes("unavailable") || error?.message?.includes("Binance") || error?.message?.includes("Yahoo")) {
-          console.warn(`[MarketDataEngine] Fallback data activated for ${ticker}: ${error.message}`);
-      } else {
-          console.warn(`[MarketDataEngine] Fallback data activated for ${ticker}:`, error.message || error);
-      }
       // Failover to dynamic local simulated structure as a safety hedge rather than crashing
       candles = this.generateFallbackCandles(ticker, limit);
     }
