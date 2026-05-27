@@ -4,6 +4,7 @@
  */
 
 import { Candle, AssetClass } from "../../types";
+import axios from "axios";
 
 interface CacheEntry {
   timestamp: number;
@@ -91,12 +92,8 @@ export class MarketDataEngine {
     const interval = this.translateInterval(timeframe, "CRYPTO");
     const url = `https://api.binance.com/api/v3/klines?symbol=${ticker.toUpperCase()}&interval=${interval}&limit=${limit}`;
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Binance remote server status: ${response.status}`);
-    }
-
-    const data: Array<any[]> = await response.json();
+    const response = await axios.get(url, { timeout: 10000 });
+    const data: Array<any[]> = response.data;
 
     return data.map((k) => ({
       time: Number(k[0]),
@@ -125,24 +122,18 @@ export class MarketDataEngine {
     else if (timeframe === "1d") range = "1y";
 
     // Modifying target endpoint to Yahoo Finance Public Chart V8 wrapper
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
+    const url = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
 
     // Dynamic fetch containing native user-agent details for resilience
-    const response = await fetch(url, {
+    const response = await axios.get(url, {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+         "Accept": "*/*"
       },
+      timeout: 10000 // 10 seconds timeout
     });
 
-    if (!response.ok) {
-      if (response.status === 404 || response.status === 500) {
-          throw new Error(`Yahoo Finance data unavailable for ${ticker} (${response.status})`);
-      }
-      throw new Error(`Yahoo Finance status endpoint exception: ${response.status}`);
-    }
-
-    const resJson = await response.json();
+    const resJson = response.data;
     const result = resJson?.chart?.result?.[0];
     if (!result) {
       throw new Error("Yahoo Finance returned malformed empty result payload");
@@ -326,41 +317,5 @@ export class MarketDataEngine {
     }
   }
 
-  /**
-   * Dynamic fallback generator mimicking deterministic trends
-   */
-  private generateFallbackCandles(ticker: string, limit: number): Candle[] {
-    const fallback: Candle[] = [];
-    let price = ticker.includes("BTC")
-      ? 68000
-      : ticker.includes("ETH")
-        ? 3500
-        : 4200;
-    let baseTime = Date.now() - limit * 3600 * 1000;
-
-    for (let i = 0; i < limit; i++) {
-      const stepTime = baseTime + i * 3600 * 1000;
-      const noise =
-        Math.sin(i / 10) * 1.5 +
-        Math.cos(i / 3) * 0.8 +
-        (Math.random() - 0.48) * 0.5;
-      const open = price;
-      const close = price * (1 + noise / 100);
-      const high = Math.max(open, close) * (1 + Math.random() * 0.005);
-      const low = Math.min(open, close) * (1 - Math.random() * 0.005);
-      const volume = Math.floor(100000 + Math.random() * 9000000);
-
-      fallback.push({
-        time: stepTime,
-        open,
-        high,
-        low,
-        close,
-        volume,
-      });
-      price = close;
-    }
-
-    return fallback;
-  }
+  // Fallback mocks removed per institutional quant integrity restrictions
 }

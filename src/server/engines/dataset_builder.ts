@@ -74,38 +74,44 @@ export class DatasetBuilder {
   public purgedWalkForwardValidation(
     dataset: MLDatasetRow[],
     purgeSize: number = 5,
+    embargoSize: number = 2,
     nSplits: number = 3,
   ) {
     console.log(
-      `[Dataset Builder] Executing Purged Walk-Forward Validation (n_splits=${nSplits}, purge_size=${purgeSize})...`,
+      `[Dataset Builder] Executing Purged Walk-Forward Validation with Embargo (n_splits=${nSplits}, purge_size=${purgeSize}, embargo_size=${embargoSize})...`,
     );
 
-    // Simulate non-stationary temporal segmentation
-    // In actual implementation, we split indices sequentially, dropping `purgeSize` elements between Train and Val sets
-    // to prevent label overlap leakage.
+    // Institutional temporal segmentation
+    // We split indices sequentially, dropping `purgeSize` elements to prevent 
+    // look-ahead leakage, and adding an `embargoSize` after the test set 
+    // to prevent reversion leakage prior to the next training set.
 
     const splits = [];
     const foldSize = Math.floor(dataset.length / nSplits);
 
     for (let i = 0; i < nSplits; i++) {
       const trainStart = 0;
-      const trainEnd = foldSize * (i + 1) - purgeSize;
+      const trainEnd = Math.max(0, foldSize * (i + 1) - purgeSize);
+      
       const valStart = foldSize * (i + 1);
       const valEnd = valStart + foldSize;
+      
+      // Embargo period directly follows the validation set before the next training fold
+      const embargoEnd = valEnd + embargoSize;
 
       if (valEnd > dataset.length) break;
       if (trainEnd <= trainStart) continue;
 
       const train = dataset.slice(trainStart, trainEnd);
       const val = dataset.slice(valStart, valEnd);
-      splits.push({ train, val });
+      splits.push({ train, val, embargoEnd });
     }
 
     // Return the latest split as the active one for simulation
     const activeSplit =
       splits.length > 0
         ? splits[splits.length - 1]
-        : { train: dataset, val: [] };
+        : { train: dataset, val: [], embargoEnd: dataset.length };
 
     console.log(
       `[Dataset Builder] Walk-Forward Fold Generated: Train=${activeSplit.train.length}, Val=${activeSplit.val.length}`,

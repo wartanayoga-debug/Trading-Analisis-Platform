@@ -89,7 +89,8 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 
           setSimulatedSuccessFilters((sPrev) => {
             if (next === 0) return sPrev;
-            return sPrev + (Math.random() > 0.65 ? 1 : 0);
+            // Deterministic progression for UI animation
+            return sPrev + (sPrev % 3 === 0 ? 1 : 0);
           });
 
           return next;

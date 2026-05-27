@@ -59,6 +59,11 @@ export class ModelTrainingService {
     rf.train(X_train, Y_train);
 
     // Evaluate and Update Platt Calibration
+    let tp = 0;
+    let tn = 0;
+    let fp = 0;
+    let fn = 0;
+    
     let correct = 0;
     const calibration = RealCalibrationEngine.getInstance();
     
@@ -66,6 +71,11 @@ export class ModelTrainingService {
         const preds = rf.predict(X_val);
         for(let i=0; i<preds.length; i++) {
             if(preds[i] === Y_val[i]) correct++;
+            
+            if (preds[i] === 1 && Y_val[i] === 1) tp++;
+            if (preds[i] === 0 && Y_val[i] === 0) tn++;
+            if (preds[i] === 1 && Y_val[i] === 0) fp++;
+            if (preds[i] === 0 && Y_val[i] === 1) fn++;
             
             // Extract voting prob from estimators to fit Brier score
             let prob = preds[i] === 1 ? 0.75 : 0.25; 
@@ -95,6 +105,13 @@ export class ModelTrainingService {
     }
     const valAccuracy = X_val.length > 0 ? (correct / X_val.length) : 0.75;
     const valLoss = 1 - valAccuracy;
+    
+    // Calculate MCC
+    let mcc = 0;
+    const denominator = Math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn));
+    if (denominator !== 0) {
+        mcc = ((tp * tn) - (fp * fn)) / denominator;
+    }
 
     // Persist Model Weights to Disk
     const modelDir = path.join(process.cwd(), "data", "models");
@@ -129,7 +146,8 @@ export class ModelTrainingService {
       metrics: {
         val_accuracy: valAccuracy,
         val_loss: valLoss,
-        optuna_trial_id: "trial_" + Math.random(),
+        val_mcc: mcc,
+        optuna_trial_id: "trial_" + Date.now(),
       },
       storagePath: storagePath,
       createdAt: Date.now(),
