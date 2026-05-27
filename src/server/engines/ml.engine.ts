@@ -209,9 +209,9 @@ export class MLPredictionEngine {
 
     for (let s = 1; s <= futureSteps; s++) {
       // Simulate price pathway following trend momentum decay over sequential steps
+      // Removed random noise injection for deterministic realistic backtesting compliance.
       const decay = 1 / (1 + s * 0.1);
-      const randomNoise = (Math.random() - 0.5) * 0.004; // small noise bounds
-      price = price * (1 + driftVelocity * decay + randomNoise);
+      price = price * (1 + driftVelocity * decay);
       projected.push(price);
     }
 

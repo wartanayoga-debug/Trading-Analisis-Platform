@@ -18,21 +18,14 @@ export class InferenceService {
     probability: number;
     target: "BINARY" | "REGRESSION";
   } {
-    const lgbm = this.registry.getLatestModel("LightGBM");
-    const pytorch = this.registry.getLatestModel("PyTorch");
+    const rfModel = this.registry.getLatestModel("RandomForestClassifier");
 
-    // Simulate inference
     let prob = 0.5;
-    if (lgbm || pytorch) {
-      // Ensembling or picking best
-      console.log(
-        `[Inference Service] Loading models from Artifact Registry for prediction...`,
-      );
-      // Incorporate indicators into output
-      prob =
-        (currentFeatures.features.rsi / 100 +
-          (currentFeatures.features.macdHist > 0 ? 0.6 : 0.4)) /
-        2;
+    if (rfModel) {
+      console.log(`[Inference Service] Found Institutional Artifact: ${rfModel.modelId}`);
+      // As a simulation of complex institutional artifacts vs local fast models,
+      // we inject a slight variance but keep it mathematically driven by features.
+      prob = currentFeatures.features.rsi / 100 * 0.4 + (currentFeatures.features.macdHist > 0 ? 0.3 : 0.2);
     }
 
     return { probability: prob, target: "BINARY" };

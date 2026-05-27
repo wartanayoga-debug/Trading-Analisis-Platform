@@ -68,8 +68,9 @@ export class MarketDataEngine {
         candles = await this.fetchIDXCandles(ticker, timeframe, limit);
       }
     } catch (error: any) {
-      // Failover to dynamic local simulated structure as a safety hedge rather than crashing
-      candles = this.generateFallbackCandles(ticker, limit);
+      console.warn(`[Data Engine] Failed to fetch data for ${ticker}:`, error.message);
+      // We do not simulate candles with Math.random anymore, data must be real
+      return [];
     }
 
     if (candles.length > 0) {
@@ -269,12 +270,13 @@ export class MarketDataEngine {
 
   public async fetchOrderbookMicrostructure(ticker: string, assetClass: string): Promise<any> {
     if (assetClass !== "CRYPTO") {
-      // For IDX, we simulate structural orderbook based on recent volatility due to lack of standard L2 API without keys
+      // For IDX, we do not have L2 Depth API access in public scopes.
+      // We return deterministic 0s instead of faking data with Math.random()
       return {
-        ofi: Math.random() * 2 - 1, // Order Flow Imbalance
-        queueImbalance: Math.random() * 2 - 1,
-        spreadDynamics: 0.0015,
-        vpin: 0.12,
+        ofi: 0, 
+        queueImbalance: 0,
+        spreadDynamics: 0,
+        vpin: 0,
         toxicFlow: false
       };
     }

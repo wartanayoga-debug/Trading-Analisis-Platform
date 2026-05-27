@@ -1,6 +1,6 @@
 export interface ModelArtifact {
   modelId: string;
-  architecture: "LightGBM" | "PyTorch";
+  architecture: "LightGBM" | "PyTorch" | "RandomForestClassifier";
   hyperparameters: Record<string, any>;
   metrics: {
     val_accuracy?: number;
