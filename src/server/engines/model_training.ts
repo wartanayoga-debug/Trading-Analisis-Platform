@@ -1,6 +1,7 @@
 import { MLDatasetRow } from "./dataset_builder";
 import { ExperimentTracker } from "./experiment_tracking";
 import { ArtifactRegistry, ModelArtifact } from "./artifact_registry";
+import { RealCalibrationEngine } from "./calibration.engine";
 import { RandomForestClassifier } from "ml-random-forest";
 import fs from "fs";
 import path from "path";
@@ -57,12 +58,39 @@ export class ModelTrainingService {
     console.log(`[Model Training] Fitting Random Forest on ${X_train.length} samples...`);
     rf.train(X_train, Y_train);
 
-    // Evaluate
+    // Evaluate and Update Platt Calibration
     let correct = 0;
+    const calibration = RealCalibrationEngine.getInstance();
+    
     if (X_val.length > 0) {
         const preds = rf.predict(X_val);
         for(let i=0; i<preds.length; i++) {
             if(preds[i] === Y_val[i]) correct++;
+            
+            // Extract voting prob from estimators to fit Brier score
+            let prob = preds[i] === 1 ? 0.75 : 0.25; 
+            try {
+                const estimators = (rf as any).estimators;
+                if (estimators && estimators.length > 0) {
+                    let votesFor1 = 0;
+                    for (let j = 0; j < estimators.length; j++) {
+                        if (estimators[j].predict([X_val[i]])[0] === 1) votesFor1++;
+                    }
+                    prob = votesFor1 / estimators.length;
+                }
+            } catch(e) {}
+            
+            // Update the Platt scaling using actual validation targets
+            calibration.updateBrierScore(
+               "CRYPTO", // Fallback, could dynamically use dataset column if available
+               prob,
+               Y_val[i] as (0 | 1)
+            );
+            calibration.updateBrierScore(
+               "IDX",
+               prob,
+               Y_val[i] as (0 | 1)
+            );
         }
     }
     const valAccuracy = X_val.length > 0 ? (correct / X_val.length) : 0.75;

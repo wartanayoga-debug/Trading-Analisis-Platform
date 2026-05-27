@@ -25,6 +25,7 @@ export interface AgentState {
   candles: Candle[];
   features?: TechIndicators;
   regime?: MarketRegimeType;
+  microstructure?: any;
   riskMetrics?: any;
   mlOutput?: any;
   sentimentScore?: number;
@@ -72,6 +73,10 @@ export class TradingAgentOrchestrator {
       }
       state.candles = candles;
       state.features = this.featureEngine.extractFeatures(candles);
+      
+      // Fetch Structural Microstructure data
+      state.microstructure = await this.dataEngine.fetchOrderbookMicrostructure(state.ticker, state.assetClass);
+
       state.regime = this.featureEngine.detectMarketRegime(
         state.features,
         candles,
@@ -86,7 +91,7 @@ export class TradingAgentOrchestrator {
       );
 
       state.reasoningLog.push(
-        `[Analyst Agent] Extracted features and detected regime: ${state.regime}`,
+        `[Analyst Agent] Extracted features and detected regime: ${state.regime} | VPIN: ${state.microstructure?.vpin?.toFixed(2)}`,
       );
       return state;
     } catch (err) {

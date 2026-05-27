@@ -6,6 +6,8 @@
 import { Candle, TechIndicators, MLPrediction } from "../../types";
 import { RealCalibrationEngine } from "./calibration.engine";
 import { RandomForestClassifier } from "ml-random-forest";
+import * as fs from "fs";
+import * as path from "path";
 
 export class MLPredictionEngine {
   private static instance: MLPredictionEngine;
@@ -25,24 +27,45 @@ export class MLPredictionEngine {
   // Phase 5: Real Model Persistence & Artifacts
   private initializeRealModel() {
     try {
-      // Trying to load real model weights from persistent storage/artifacts
-      // If none, we initialize and "train" a base gradient boosting instance.
-      const options = {
-          seed: 42,
-          maxFeatures: 1.0,
-          replacement: true,
-          nEstimators: 25,
-      };
-      this.rfClassifier = new RandomForestClassifier(options);
-      
-      // We will train it on startup with dummy/macro data if no weights exist
-      // In a real system, we load .json or .onnx files here.
-      const dummyX = [[30, 0, -1, 0.2], [70, 1, 1, 0.8], [50, 0, 0, 0.5], [60, 1, 0.5, 0.7], [40, 0, -0.5, 0.3], [80, 1, 1.2, 0.9]];
-      const dummyY = [0, 1, 0, 1, 0, 1]; // 0: bear, 1: bull
-      
-      this.rfClassifier.train(dummyX, dummyY);
-      this.modelWeightsLoaded = true;
-      console.log("[ML Engine] Real RandomForestClassifier Model Initialized. Weights loaded.");
+      const modelDir = path.join(process.cwd(), "data", "models");
+      let loaded = false;
+
+      if (fs.existsSync(modelDir)) {
+          const files = fs.readdirSync(modelDir).filter((f: string) => f.endsWith('.json') && f.includes('RandomForestClassifier'));
+          if (files.length > 0) {
+              // Sort to get latest
+              files.sort((a: string, b: string) => {
+                  const statA = fs.statSync(path.join(modelDir, a)).mtimeMs;
+                  const statB = fs.statSync(path.join(modelDir, b)).mtimeMs;
+                  return statB - statA;
+              });
+              const latestModelPath = path.join(modelDir, files[0]);
+              const rawData = fs.readFileSync(latestModelPath, 'utf-8');
+              const modelJson = JSON.parse(rawData);
+              this.rfClassifier = RandomForestClassifier.load(modelJson);
+              this.modelWeightsLoaded = true;
+              console.log(`[ML Engine] Real RandomForestClassifier Checkpoint Loaded: ${files[0]}`);
+              loaded = true;
+          }
+      }
+
+      if (!loaded) {
+          console.warn("[ML Engine] No real weights found on disk. Training initial micro-model...");
+          const options = {
+              seed: 42,
+              maxFeatures: 1.0,
+              replacement: true,
+              nEstimators: 25,
+          };
+          this.rfClassifier = new RandomForestClassifier(options);
+          
+          const dummyX = [[30, 0, -1, 0.2, 0.1], [70, 1, 1, 0.8, 0.5], [50, 0, 0, 0.5, 0.2], [60, 1, 0.5, 0.7, 0.3], [40, 0, -0.5, 0.3, 0.1], [80, 1, 1.2, 0.9, 0.8]];
+          const dummyY = [0, 1, 0, 1, 0, 1];
+          
+          this.rfClassifier.train(dummyX, dummyY);
+          this.modelWeightsLoaded = true;
+          console.log("[ML Engine] Base RandomForestClassifier Model Initialized.");
+      }
     } catch (e) {
       console.error("[ML Engine] Fail to initialize model:", e);
     }
@@ -133,29 +156,32 @@ export class MLPredictionEngine {
 
     // Feature Weight Matrix (Building a feature tensor slice)
     const f1_rsi = indicators.rsi;
-    const f2_emaCo = indicators.emaFast > indicators.emaSlow ? 1.0 : 0.0;
-    const f3_macdH = indicators.macdHist / lastCandle.close;
-    const f4_bbProximity =
-      (lastCandle.close - indicators.bbLower) /
-      (indicators.bbUpper - indicators.bbLower || 1);
+    const f2_macdH = indicators.macdHist;
+    const f3_adx = indicators.adx || 20; 
+    const f4_obv = 1000; // Simplified proxy if we don't store actual OBV here
+    const f5_bbWidth = (indicators.bbUpper - indicators.bbLower) / (indicators.bbMiddle || 1);
 
-    const featureVector = [[f1_rsi, f2_emaCo, f3_macdH, f4_bbProximity]];
+    const featureVector = [[f1_rsi, f2_macdH, f3_adx, f4_obv, f5_bbWidth]];
     
     // Using actual ML model to generate prediction
     const predictionResult = this.rfClassifier.predict(featureVector);
     const resultValue = predictionResult[0]; // Output is classification label (0 or 1)
     
-    // Fallback variance: Random Forest trained on dummy data sets often predicts 0 for all real incoming data.
-    // To ensure the UI scanner actually shows data, we add deterministic ticker hashing variance to probabilities if it's struggling.
-    let computedProb = resultValue === 1 ? 0.75 : 0.35;
-    
-    if (computedProb === 0.35) {
-       const tickerHash = candles[0].volume % 10; 
-       // Give 70% of the currently 'bearish' predictions a bullish bias dynamically to ensure some data is shown for the user
-       if (tickerHash > 2) {
-          computedProb = 0.82; 
-       }
-    }
+    // Instead of completely inventing probabilities, use the exact result from the tree estimators 
+    // to build a real voting probability measure.
+    let computedProb = resultValue;
+    try {
+        const estimators = (this.rfClassifier as any).estimators;
+        if (estimators && estimators.length > 0) {
+            let votesFor1 = 0;
+            // Iterate over DT estimators
+            for (let i = 0; i < estimators.length; i++) {
+                const estPredict = estimators[i].predict(featureVector);
+                if (estPredict[0] === 1) votesFor1++;
+            }
+            computedProb = votesFor1 / estimators.length;
+        }
+    } catch(e) { }
     
     return computedProb;
   }
