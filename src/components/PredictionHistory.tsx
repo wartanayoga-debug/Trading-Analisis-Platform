@@ -26,9 +26,7 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
           <h2 className="text-base font-display font-semibold text-gray-200 flex items-center gap-2">
             <History className="w-4 h-4 text-cyan-400" /> {t.walkForwardLedger}
           </h2>
-          <p className="text-gray-500 text-xs font-mono">
-            {t.ledgerDesc}
-          </p>
+          <p className="text-gray-500 text-xs font-mono">{t.ledgerDesc}</p>
         </div>
       </div>
 
@@ -58,7 +56,7 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                 const dateRep = new Date(pred.timestamp).toLocaleTimeString();
                 const isBull = pred.predictedDirection === "BULLISH";
                 const isBear = pred.predictedDirection === "BEARISH";
-                
+
                 // Audited status variables
                 const isRealized = pred.success !== undefined;
                 const changeIsPositive = (pred.realizedPercent ?? 0) >= 0;
@@ -84,8 +82,8 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                           isBull
                             ? "bg-emerald-950/20 text-emerald-400"
                             : isBear
-                            ? "bg-rose-950/20 text-rose-400"
-                            : "bg-gray-900 text-gray-400"
+                              ? "bg-rose-950/20 text-rose-400"
+                              : "bg-gray-900 text-gray-400"
                         }`}
                       >
                         {pred.predictedDirection}
@@ -94,7 +92,8 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                     <td className="py-2.5 px-3 text-right font-bold text-gray-400">
                       {pred.assetClass === "CRYPTO" ? "$" : "Rp"}
                       {pred.initialPrice.toLocaleString(undefined, {
-                        maximumFractionDigits: pred.assetClass === "CRYPTO" ? 2 : 0,
+                        maximumFractionDigits:
+                          pred.assetClass === "CRYPTO" ? 2 : 0,
                       })}
                     </td>
                     <td className="py-2.5 px-3 text-right text-gray-400 font-bold">
@@ -102,7 +101,8 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                         <>
                           {pred.assetClass === "CRYPTO" ? "$" : "Rp"}
                           {pred.actualPrice?.toLocaleString(undefined, {
-                            maximumFractionDigits: pred.assetClass === "CRYPTO" ? 2 : 0,
+                            maximumFractionDigits:
+                              pred.assetClass === "CRYPTO" ? 2 : 0,
                           })}
                         </>
                       ) : (
@@ -131,16 +131,19 @@ export const PredictionHistory: React.FC<PredictionHistoryProps> = ({
                       {isRealized ? (
                         pred.success ? (
                           <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px] uppercase bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-950/50">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" /> {t.truePositive}
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />{" "}
+                            {t.truePositive}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-rose-400 font-bold text-[10px] uppercase bg-rose-950/20 px-2 py-0.5 rounded border border-rose-950/50">
-                            <XCircle className="w-3 h-3 text-rose-500" /> {t.missed}
+                            <XCircle className="w-3 h-3 text-rose-500" />{" "}
+                            {t.missed}
                           </span>
                         )
                       ) : (
                         <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-[10px] uppercase bg-gray-900/60 px-2 py-0.5 rounded border border-gray-900">
-                          <Clock className="w-3 h-3 text-gray-500" /> {t.pendingAudit}
+                          <Clock className="w-3 h-3 text-gray-500" />{" "}
+                          {t.pendingAudit}
                         </span>
                       )}
                     </td>

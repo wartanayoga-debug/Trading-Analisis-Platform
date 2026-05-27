@@ -26,7 +26,8 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
   lang,
 }) => {
   const t = translations[lang];
-  const globalAccuracy = calibration?.globalAccuracyTracker.overallAccuracy ?? 0.0;
+  const globalAccuracy =
+    calibration?.globalAccuracyTracker.overallAccuracy ?? 0.0;
   const totalAudits = calibration?.globalAccuracyTracker.totalPredictions ?? 0;
   const idxWeight = calibration?.idxWeight ?? 1.0;
   const cryptoWeight = calibration?.cryptoWeight ?? 1.0;
@@ -105,12 +106,14 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                 : "bg-emerald-950/40 hover:bg-emerald-950/80 border-emerald-800 hover:border-emerald-600 text-emerald-300 active:scale-[0.98]"
             }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isAuditing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${isAuditing ? "animate-spin" : ""}`}
+            />
             {isAuditing ? t.recalibrating : t.auditButton}
           </button>
           <p className="text-gray-500 text-[10px] font-mono mt-2 text-center">
-            {lastScannedTime 
-              ? t.aggregatedScan.replace("{count}", scannedCount.toString()) 
+            {lastScannedTime
+              ? t.aggregatedScan.replace("{count}", scannedCount.toString())
               : t.requireScan}
           </p>
         </div>

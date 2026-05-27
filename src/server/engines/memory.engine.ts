@@ -55,37 +55,50 @@ export class MemoryLearningEngine {
   /**
    * Evaluates predictions walk-forward realizations to self-adapt confidence scaling coefficients
    */
-  public executeCalibrationAudit(): {
+  public async executeCalibrationAudit(): Promise<{
     newlyAuditedCount: number;
     globalAccuracy: number;
-  } {
+  }> {
     const predictions = this.db.getPredictions();
     const openPredictions = predictions.filter((p) => p.success === undefined);
     let newlyAuditedCount = 0;
 
-    openPredictions.forEach((pred) => {
-      // Simulate/approximate walk-forward price movements for audit realizations
-      // Bias checks: bullish projections require positive price growth
-      const randomSuccessBias = Math.random() < 0.62; // 62% average historical model accuracy projection
+    // We import Data Engine here to fetch real future candles to avoid circular dependency
+    const MarketDataEngine = require("./data.engine").MarketDataEngine;
+    const dataEngine = MarketDataEngine.getInstance();
 
-      const realizationPercent = randomSuccessBias
-        ? pred.predictedDirection === "BULLISH"
-          ? 3.5
-          : -3.5
-        : pred.predictedDirection === "BULLISH"
-          ? -2.0
-          : 2.0;
+    for (const pred of openPredictions) {
+      try {
+        // Real PnL Calculated (Future Candle Arrives)
+        const recentCandles = await dataEngine.getHistory(
+          pred.ticker,
+          pred.assetClass,
+          "1h",
+          2,
+        );
+        if (recentCandles.length > 0) {
+          const currentClose = recentCandles[recentCandles.length - 1].close;
+          const realizationPercent =
+            ((currentClose - pred.initialPrice) / pred.initialPrice) * 100;
 
-      const actualPrice = pred.initialPrice * (1 + realizationPercent / 100);
+          // Score prediction
+          const wasBullish = pred.predictedDirection === "BULLISH";
+          const actualSuccess =
+            (wasBullish && realizationPercent >= 0.5) ||
+            (!wasBullish && realizationPercent <= -0.5);
 
-      this.db.updatePrediction(pred.id, {
-        actualPrice,
-        realizedPercent: Number(realizationPercent.toFixed(2)),
-        success: randomSuccessBias,
-        auditedAt: new Date().toISOString(),
-      });
-      newlyAuditedCount++;
-    });
+          this.db.updatePrediction(pred.id, {
+            actualPrice: currentClose,
+            realizedPercent: Number(realizationPercent.toFixed(2)),
+            success: actualSuccess,
+            auditedAt: new Date().toISOString(),
+          });
+          newlyAuditedCount++;
+        }
+      } catch (err) {
+        console.warn(`[Memory Engine] Audit missing data for ${pred.ticker}`);
+      }
+    }
 
     const refreshedCalibration = this.db.getCalibration();
 
@@ -97,28 +110,33 @@ export class MemoryLearningEngine {
   }
 
   /**
-   * Calibrates ML Prediction output based on historical memory weights
+   * Probability Calibration implementation using approximate Platt Scaling logic
+   * Applies empirical success rate moving averages to raw logistic outputs.
    */
   public applyCalibrationBias(
     rawProbability: number,
     assetClass: "IDX" | "CRYPTO",
   ): number {
     const calibration = this.db.getCalibration();
-    const biasModifier =
-      assetClass === "IDX" ? calibration.idxWeight : calibration.cryptoWeight;
+    const empiricalAccuracy = calibration.globalAccuracyTracker.overallAccuracy;
 
-    // Standardize bias adjustments safely around 1.0 mapping baselines
-    let biasedProbability = rawProbability;
+    // Platt Scaling approximation: P(y=1|f) = 1 / (1 + exp(A * f(x) + B))
+    // We dynamically shift the sigmoid (A, B) based on historical empirical accuracy
+    // If accuracy is low, model is miscalibrated, pull predictions closer to 0.5 (Maximum Uncertainty)
 
-    if (biasModifier > 1.0) {
-      // Enhance positive probabilities
-      biasedProbability =
-        rawProbability + (1.0 - rawProbability) * (biasModifier - 1.0) * 0.15;
-    } else if (biasModifier < 1.0) {
-      // Compress extreme probabilities (deflate confidence during periods of model error)
-      biasedProbability = rawProbability * biasModifier;
-    }
+    // Empirical baseline (prior)
+    const prior = empiricalAccuracy > 0 ? empiricalAccuracy : 0.5;
 
-    return Math.max(0.01, Math.min(0.99, biasedProbability));
+    // A heuristic parameter mapping historical confidence to scale shifting
+    const A = -1.5; // Slope
+    const B = Math.log((1 - prior) / prior) * 0.5; // Intercept shift
+
+    // Reverse logistic on raw to get f(x)
+    const fx = Math.log(rawProbability / (1 - rawProbability + 0.0001));
+
+    // Apply Platt Scaling
+    const plattProbability = 1 / (1 + Math.exp(A * fx + B));
+
+    return Math.max(0.01, Math.min(0.99, plattProbability));
   }
 }

@@ -1,11 +1,12 @@
 import { FeatureStore } from "./feature_store";
-import { ExperimentTracker, ExperimentRun } from "./experiment_tracking";
-import { RealCalibrationEngine } from "./calibration.engine";
+import { DatasetBuilder } from "./dataset_builder";
+import { ModelTrainingService } from "./model_training";
 
 export class RealTrainingPipeline {
   private static instance: RealTrainingPipeline;
   private featureStore = FeatureStore.getInstance();
-  private tracker = ExperimentTracker.getInstance();
+  private datasetBuilder = DatasetBuilder.getInstance();
+  private modelTrainer = ModelTrainingService.getInstance();
 
   private constructor() {}
 
@@ -18,43 +19,50 @@ export class RealTrainingPipeline {
 
   /**
    * Triggers an asynchronous training pipeline loop on stored features
+   * Architecture: Institutional ML Pipeline
    */
   public async triggerTrainingPipeline(modelName: string): Promise<void> {
     console.log(
-      `[Training Pipeline] Initiating continuous learning loop for ${modelName}...`,
+      `[Training Pipeline] Initiating institutional learning loop...`,
     );
 
-    const runId = `RUN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-    // Simulate feature extraction and gradient descent epochs
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const mockAccuracy = 0.55 + Math.random() * 0.25; // 0.55 to 0.80
-    const mockLogLoss = 0.69 - mockAccuracy * 0.3;
-
-    const run: ExperimentRun = {
-      runId,
-      modelName,
-      timestamp: Date.now(),
-      hyperparameters: {
-        learningRate: 0.001,
-        batchSize: 64,
-        epochs: 100,
-        optimizer: "AdamW",
-        architecture: "LSTM-Transformer-Hybrid",
+    // In a real scenario we grab features for all tickers
+    // Grab all raw features from SQLite
+    const rawFeatures = this.featureStore.getFeaturesRaw();
+    // Reformat slightly to simulate the previous structures for the pipeline
+    // This maintains continuity of the demo while utilizing SQLite
+    const records: any[] = rawFeatures.map((row: any) => ({
+      ticker: row.asset,
+      timestamp: row.timestamp,
+      features: {
+        [row.feature_name]: row.feature_value,
       },
-      metrics: {
-        accuracy: mockAccuracy,
-        f1Score: mockAccuracy * 0.9,
-        logLoss: mockLogLoss,
-        sharpeRatio: (mockAccuracy - 0.5) * 5,
-      },
-      status: "COMPLETED",
-    };
+      candles: [{ close: 100 }, { close: 105 }], // Mock candles for validation
+    }));
 
-    this.tracker.logRun(run);
-    console.log(
-      `[Training Pipeline] Training epoch completed. Model registered in Experiment Tracker.`,
+    if (records.length < 20) {
+      console.log(
+        `[Training Pipeline] Not enough records yet (${records.length}). Skipping training.`,
+      );
+      return;
+    }
+
+    // Dataset Builder Node: Extracts Polars-like DataFrames
+    // Target binary threshold = 0.015 (1.5% return)
+    const dataset = this.datasetBuilder.buildDataset(records, 12, 0.015);
+
+    if (dataset.length === 0) return;
+
+    // Train/Validation Split Node
+    const { train, val } = this.datasetBuilder.purgedWalkForwardValidation(
+      dataset,
+      5,
+      3,
     );
+
+    // Model Training & HPO Node -> Artifact Registry
+    await this.modelTrainer.train("BINARY", train, val);
+
+    console.log(`[Training Pipeline] Institutional training epoch completed.`);
   }
 }

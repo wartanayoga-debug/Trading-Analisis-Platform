@@ -5,13 +5,25 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { ScannerAsset, AssetClass } from "../types";
-import { Search, SlidersHorizontal, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+} from "lucide-react";
 import { translations, Language } from "../utils/translations";
 
 interface ScannerTableProps {
   assets: ScannerAsset[];
   isLoading: boolean;
-  onScanTrigger: (assetClass: AssetClass, timeframe: "15m" | "30m" | "1h", manualTicker?: string) => void;
+  onScanTrigger: (
+    assetClass: AssetClass,
+    timeframe: "15m" | "30m" | "1h",
+    manualTicker?: string,
+  ) => void;
   onSelectAsset: (ticker: string) => void;
   lang: Language;
   lastScanTimestamp: string | null;
@@ -27,7 +39,9 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 }) => {
   const [manualTicker, setManualTicker] = useState("");
   const [assetClassFilter, setAssetClassFilter] = useState<AssetClass>("IDX");
-  const [activeInterval, setActiveInterval] = useState<"15m" | "30m" | "1h">("15m");
+  const [activeInterval, setActiveInterval] = useState<"15m" | "30m" | "1h">(
+    "15m",
+  );
 
   const t = translations[lang];
 
@@ -44,7 +58,7 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 
     // Default: Math Score Rank desc
     result.sort((a, b) => {
-      return b.probability * b.rrRatio - a.probability * a.rrRatio; 
+      return b.probability * b.rrRatio - a.probability * a.rrRatio;
     });
 
     return result;
@@ -60,7 +74,7 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
       } else if (assetClassFilter === "CRYPTO") {
         initialQueue = 100;
       }
-      
+
       setSimulatedQueue(initialQueue);
       setSimulatedSuccessFilters(0);
 
@@ -98,9 +112,7 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
           <h2 className="text-lg font-display font-semibold text-gray-200 flex items-center gap-2">
             {t.realtimeScanner}
           </h2>
-          <p className="text-gray-500 text-xs font-mono">
-            {t.scannerDesc}
-          </p>
+          <p className="text-gray-500 text-xs font-mono">{t.scannerDesc}</p>
         </div>
 
         {/* STATUS INDICATORS PANEL */}
@@ -115,17 +127,21 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
                 {t.scanInProgress}
               </span>
             </div>
-            
+
             <div className="h-4 w-px bg-gray-800"></div>
 
             <div className="text-[11px] font-mono text-gray-400">
-              {t.batchQueueSize}: <span className="font-bold text-gray-200">{simulatedQueue}</span>
+              {t.batchQueueSize}:{" "}
+              <span className="font-bold text-gray-200">{simulatedQueue}</span>
             </div>
 
             <div className="h-4 w-px bg-gray-800"></div>
 
             <div className="text-[11px] font-mono text-gray-400">
-              {t.successfulFilters}: <span className="font-bold text-emerald-400">{simulatedSuccessFilters}</span>
+              {t.successfulFilters}:{" "}
+              <span className="font-bold text-emerald-400">
+                {simulatedSuccessFilters}
+              </span>
             </div>
           </div>
         )}
@@ -138,12 +154,16 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
-            placeholder={assetClassFilter === "IDX" ? "Tambah Ticker (Cth: BBCA.JK)" : "Tambah Kripto (Cth: BTCUSDT)"}
+            placeholder={
+              assetClassFilter === "IDX"
+                ? "Tambah Ticker (Cth: BBCA.JK)"
+                : "Tambah Kripto (Cth: BTCUSDT)"
+            }
             value={manualTicker}
             onChange={(e) => setManualTicker(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && manualTicker.trim() !== "") {
-                onScanTrigger(assetClassFilter, activeInterval, manualTicker.trim());
+                onSelectAsset(manualTicker.trim().toUpperCase());
               }
             }}
             className="w-full bg-gray-900 border border-gray-800 text-gray-200 text-xs font-mono rounded-md pl-9 pr-3 py-2.5 focus:outline-none focus:border-cyan-700 uppercase"
@@ -186,7 +206,9 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 
         {/* Start scan button - Positioned on far right */}
         <button
-          onClick={() => onScanTrigger(assetClassFilter, activeInterval, manualTicker.trim())}
+          onClick={() =>
+            onScanTrigger(assetClassFilter, activeInterval, manualTicker.trim())
+          }
           disabled={isLoading}
           className={`w-full py-2.5 font-mono text-xs font-semibold rounded flex items-center justify-center gap-2 border transition-all ${
             isLoading
@@ -194,7 +216,9 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
               : "bg-cyan-950/40 border-cyan-800 hover:border-cyan-600 text-cyan-400 active:scale-[0.98] cursor-pointer"
           }`}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`}
+          />
           {isLoading ? t.scanning : t.processScan}
         </button>
       </div>
@@ -221,9 +245,15 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
                 <td colSpan={9} className="py-16 text-center text-gray-400">
                   <div className="max-w-md mx-auto flex flex-col items-center gap-3 bg-gray-900/40 p-6 border border-gray-800/60 rounded-lg">
                     <SlidersHorizontal className="w-8 h-8 text-cyan-500 animate-pulse mb-1" />
-                    <p className="text-sm font-semibold text-gray-200 uppercase tracking-wider">Pemindai Pasar Real-Time Kosong</p>
+                    <p className="text-sm font-semibold text-gray-200 uppercase tracking-wider">
+                      Pemindai Pasar Real-Time Kosong
+                    </p>
                     <p className="text-[11px] text-gray-400 font-sans leading-relaxed">
-                      Silakan tentukan pilihan kelas aset Anda (<strong>SAHAM (IDX)</strong> atau <strong>KRIPTO (CRYPTO)</strong>) di atas, lalu klik tombol <strong>Mulai Pindai</strong> untuk mendownload dan menghitung data matematika momentum secara langsung.
+                      Silakan tentukan pilihan kelas aset Anda (
+                      <strong>SAHAM (IDX)</strong> atau{" "}
+                      <strong>KRIPTO (CRYPTO)</strong>) di atas, lalu klik
+                      tombol <strong>Mulai Pindai</strong> untuk mendownload dan
+                      menghitung data matematika momentum secara langsung.
                     </p>
                   </div>
                 </td>
@@ -244,8 +274,8 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
                   asset.sentimentScore > 0.2
                     ? "text-emerald-400"
                     : asset.sentimentScore < -0.2
-                    ? "text-rose-500"
-                    : "text-gray-400";
+                      ? "text-rose-500"
+                      : "text-gray-400";
 
                 return (
                   <tr
@@ -267,13 +297,17 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
                       <div className="font-semibold text-gray-200">
                         {asset.assetClass === "CRYPTO" ? "$" : "Rp"}
                         {asset.price.toLocaleString(undefined, {
-                          minimumFractionDigits: asset.assetClass === "CRYPTO" ? 2 : 0,
-                          maximumFractionDigits: asset.assetClass === "CRYPTO" ? 4 : 0,
+                          minimumFractionDigits:
+                            asset.assetClass === "CRYPTO" ? 2 : 0,
+                          maximumFractionDigits:
+                            asset.assetClass === "CRYPTO" ? 4 : 0,
                         })}
                       </div>
                       <div
                         className={`text-[10px] flex items-center gap-0.5 font-bold ${
-                          changeIsPositive ? "text-emerald-400" : "text-rose-500"
+                          changeIsPositive
+                            ? "text-emerald-400"
+                            : "text-rose-500"
                         }`}
                       >
                         {changeIsPositive ? (
@@ -293,8 +327,8 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
                           isBull
                             ? "bg-emerald-950/40 text-emerald-300 border border-emerald-800/20"
                             : isBear
-                            ? "bg-rose-950/40 text-rose-300 border border-rose-800/20"
-                            : "bg-gray-900 text-gray-400 border border-gray-800"
+                              ? "bg-rose-950/40 text-rose-300 border border-rose-800/20"
+                              : "bg-gray-900 text-gray-400 border border-gray-800"
                         }`}
                       >
                         {isBull ? (
@@ -321,19 +355,33 @@ export const ScannerTable: React.FC<ScannerTableProps> = ({
 
                     {/* VOLATILITY */}
                     <td className="py-3.5 px-4 text-center">
-                      <span className="text-gray-300 font-bold">{asset.volatilityScore}%</span>
-                      <p className="text-[9px] text-gray-500 lowercase">ATR ratio</p>
+                      <span className="text-gray-300 font-bold">
+                        {asset.volatilityScore}%
+                      </span>
+                      <p className="text-[9px] text-gray-500 lowercase">
+                        ATR ratio
+                      </p>
                     </td>
 
                     {/* LIQUIDITY */}
                     <td className="py-3.5 px-4 text-center">
-                      <span className="text-gray-300 font-bold">{asset.liquidityScore}%</span>
-                      <p className="text-[9px] text-gray-500 lowercase">volume proxy</p>
+                      <span className="text-gray-300 font-bold">
+                        {asset.liquidityScore}%
+                      </span>
+                      <p className="text-[9px] text-gray-500 lowercase">
+                        volume proxy
+                      </p>
                     </td>
 
                     {/* SENTIMENT */}
-                    <td className={`py-3.5 px-4 text-center font-bold ${sentimentColor}`}>
-                      {asset.sentimentScore > 0.2 ? "Positif" : asset.sentimentScore < -0.2 ? "Negatif" : "Netral"}
+                    <td
+                      className={`py-3.5 px-4 text-center font-bold ${sentimentColor}`}
+                    >
+                      {asset.sentimentScore > 0.2
+                        ? "Positif"
+                        : asset.sentimentScore < -0.2
+                          ? "Negatif"
+                          : "Netral"}
                     </td>
 
                     {/* RANK SCORE */}

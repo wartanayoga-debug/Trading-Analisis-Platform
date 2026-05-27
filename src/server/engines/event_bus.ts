@@ -8,18 +8,26 @@ export interface SystemEvent {
 }
 
 /**
- * Phase 4: Event Sourcing & Kafka Local Simulation
- * Acts as a centralized message broker for distributed worker tasks
+ * Event-Driven Architecture Simulation
+ * Simulates:
+ * - Queue: Kafka
+ * - Stream: Redis Streams
+ * - Workers: BullMQ
+ * - DB: TimescaleDB
  */
 export class EventBus extends EventEmitter {
   private static instance: EventBus;
-  private eventLog: SystemEvent[] = [];
+  private redisStreamLog: SystemEvent[] = [];
 
   private constructor() {
     super();
-    // Simulate Kafka consumer groups
-    this.on("scan_requested", this.handleDistributedScan.bind(this));
-    this.on("model_drift_detected", this.handleModelRetraining.bind(this));
+
+    // Simulate BullMQ Worker Queues binding to Kafka/Redis topics
+    // Workflow: market-data-stream -> feature workers -> inference workers -> risk -> portfolio
+    this.on("market_data_stream", this.bullMQFeatureWorker.bind(this));
+    this.on("features_computed", this.bullMQInferenceWorker.bind(this));
+    this.on("inference_completed", this.bullMQRiskWorker.bind(this));
+    this.on("risk_evaluated", this.bullMQPortfolioWorker.bind(this));
   }
 
   public static getInstance(): EventBus {
@@ -36,21 +44,51 @@ export class EventBus extends EventEmitter {
       payload,
       timestamp: Date.now(),
     };
-    this.eventLog.push(event);
-    console.log(`[Kafka/EventBus] Published Event: [${topic}] ID: ${event.id}`);
-    this.emit(topic, event);
-  }
 
-  private handleDistributedScan(event: SystemEvent) {
+    // Simulate TimescaleDB insertion for tick data
+    this.redisStreamLog.push(event);
+
     console.log(
-      `[Distributed Worker] Consuming scan_requested event. Processing in background...`,
+      `[Kafka -> Redis Stream] Published Event: [${topic}] ID: ${event.id}`,
     );
-    // Simulated distributed work
+
+    // Asynchronously dispatch to BullMQ workers
+    setImmediate(() => this.emit(topic, event));
   }
 
-  private handleModelRetraining(event: SystemEvent) {
+  private bullMQFeatureWorker(event: SystemEvent) {
     console.log(
-      `[Distributed Worker] Consuming model_drift_detected. Triggering ML Pipeline...`,
+      `[BullMQ Worker: Feature] Consuming market_data_stream. Computing variables...`,
+    );
+    this.publish("features_computed", {
+      asset: event.payload.asset,
+      features: { rsi: 45 },
+    });
+  }
+
+  private bullMQInferenceWorker(event: SystemEvent) {
+    console.log(
+      `[BullMQ Worker: Inference] Consuming features_computed. Querying ML Artifacts...`,
+    );
+    this.publish("inference_completed", {
+      asset: event.payload.asset,
+      probability: 0.82,
+    });
+  }
+
+  private bullMQRiskWorker(event: SystemEvent) {
+    console.log(
+      `[BullMQ Worker: Risk] Consuming inference_completed. Calculating VAR...`,
+    );
+    this.publish("risk_evaluated", {
+      asset: event.payload.asset,
+      riskScore: 12,
+    });
+  }
+
+  private bullMQPortfolioWorker(event: SystemEvent) {
+    console.log(
+      `[BullMQ Worker: Portfolio] Consuming risk_evaluated. Rebalancing covariance matrix...`,
     );
   }
 }
