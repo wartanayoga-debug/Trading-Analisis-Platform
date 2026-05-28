@@ -7,35 +7,38 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
-import apiRouter from "./src/server/routes/api";
+import apiRouter from "./data/models/src/server/routes/api";
 
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { EventBus } from "./src/server/engines/event_bus";
+import { EventBus } from "./data/models/src/server/engines/event_bus";
 
 // Configure local environment configuration keys
 dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
-  
+  const PORT = Number(process.env.PORT ?? 3000);
+
   const httpServer = createServer(app);
-  
+
   // Phase 4: WebSocket Infra Setup
   const io = new Server(httpServer, {
-    cors: { origin: "*" }
+    cors: { origin: "*" },
   });
-  
+
   io.on("connection", (socket) => {
     console.log(`[WebSocket] Client connected: ${socket.id}`);
-    socket.emit("system_status", { status: "WS_CONNECTED", message: "QuantPrime Stream Ready" });
-    
+    socket.emit("system_status", {
+      status: "WS_CONNECTED",
+      message: "QuantPrime Stream Ready",
+    });
+
     socket.on("disconnect", () => {
       console.log(`[WebSocket] Client disconnected: ${socket.id}`);
     });
   });
-  
+
   // Pipe EventBus to WebSocket
   EventBus.getInstance().on("scan_requested", (evt) => {
     io.emit("live_event", { type: "SCAN_START", data: evt });
@@ -68,7 +71,7 @@ async function startServer() {
   } else {
     console.log("[Server] Active production mode. Configuring flat distribution file headers.");
     const distPath = path.join(process.cwd(), "dist");
-    
+
     // Serve production builds directly
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -81,7 +84,7 @@ async function startServer() {
   });
 }
 
-startServer().catch((error) => {
-  console.error("[Server] Fatal bootstrap exception while running Node thread:", error);
+startServer().catch((err) => {
+  console.error("[Server] Failed to start", err);
   process.exit(1);
 });
