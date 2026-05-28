@@ -1862,7 +1862,6 @@ router.get("/assets/:ticker", async (req: Request, res: Response) => {
       name: `Dynamic Loaded ${ticker.toUpperCase()}`,
       assetClass: isCrypto ? "CRYPTO" : "IDX",
       sector: isCrypto ? "Crypto" : "Unknown",
-      timeframe: "1h",
       price: 0,
       changePercent: 0,
       trendDirection: "NEUTRAL",
