@@ -1,5 +1,4 @@
 import { TechIndicators, Candle } from "../../types";
-import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 
@@ -11,30 +10,35 @@ export interface FeatureRecord {
   regime: string;
 }
 
+interface PersistedFeatureRow {
+  timestamp: string;
+  asset: string;
+  feature_name: string;
+  feature_value: number;
+  feature_version: string;
+}
+
 export class FeatureStore {
   private static instance: FeatureStore;
-  private db: Database.Database;
+  private storagePath: string;
+  private rows: PersistedFeatureRow[] = [];
 
   private constructor() {
     const dbDir = path.join(process.cwd(), "data");
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-    this.db = new Database(path.join(dbDir, "feature_store.db"));
-    this.initializeSchema();
-  }
 
-  private initializeSchema() {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS features (
-        timestamp TIMESTAMP,
-        asset TEXT,
-        feature_name TEXT,
-        feature_value DOUBLE PRECISION,
-        feature_version TEXT
-      );
-      CREATE INDEX IF NOT EXISTS idx_features_asset ON features(asset);
-    `);
+    this.storagePath = path.join(dbDir, "feature_store.json");
+
+    if (fs.existsSync(this.storagePath)) {
+      try {
+        const raw = fs.readFileSync(this.storagePath, "utf8");
+        this.rows = JSON.parse(raw);
+      } catch {
+        this.rows = [];
+      }
+    }
   }
 
   public static getInstance(): FeatureStore {
@@ -42,6 +46,10 @@ export class FeatureStore {
       FeatureStore.instance = new FeatureStore();
     }
     return FeatureStore.instance;
+  }
+
+  private persist() {
+    fs.writeFileSync(this.storagePath, JSON.stringify(this.rows, null, 2), "utf8");
   }
 
   public saveFeatures(
@@ -53,40 +61,31 @@ export class FeatureStore {
     const timestamp = new Date().toISOString();
     const version = "1.0.0";
 
-    // We insert a row for each feature dynamically to match the schema
-    const insert = this.db.prepare(
-      `INSERT INTO features (timestamp, asset, feature_name, feature_value, feature_version) 
-       VALUES (?, ?, ?, ?, ?)`,
-    );
-
-    const transaction = this.db.transaction(() => {
-      for (const [key, value] of Object.entries(features)) {
-        if (typeof value === "number") {
-          insert.run(timestamp, ticker, key, value, version);
-        }
+    for (const [key, value] of Object.entries(features)) {
+      if (typeof value === "number") {
+        this.rows.push({
+          timestamp,
+          asset: ticker,
+          feature_name: key,
+          feature_value: value,
+          feature_version: version,
+        });
       }
-    });
+    }
 
-    transaction();
+    this.persist();
   }
 
   public getFeaturesRaw(ticker?: string) {
-    if (ticker) {
-      const stmt = this.db.prepare(
-        `SELECT * FROM features WHERE asset = ? ORDER BY timestamp DESC LIMIT 1000`,
-      );
-      return stmt.all(ticker);
-    }
-    const stmt = this.db.prepare(
-      `SELECT * FROM features ORDER BY timestamp DESC LIMIT 1000`,
-    );
-    return stmt.all();
+    const rows = ticker
+      ? this.rows.filter((r) => r.asset === ticker)
+      : this.rows;
+
+    return rows.slice(-1000).reverse();
   }
 
-  // Legacy method to keep pipeline unbroken for now, although we migrate dataset builder later
+  // Legacy method to keep pipeline unbroken for now
   public getFeatures(ticker: string): FeatureRecord[] {
-    // Return mock full records since it is hard to reconstruct 'candles' which aren't in this table
-    // In a real TS pipeline we'd reconstruct or store candles elsewhere.
     return [];
   }
 }
