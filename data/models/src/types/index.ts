@@ -11,6 +11,7 @@ export interface AssetInfo {
   name: string;
   assetClass: AssetClass;
   sector?: string;
+  timeframe?: string;
 }
 
 // Historical OHLCV (candles)
@@ -126,6 +127,23 @@ export interface RiskMetrics {
   invalidationLevel: number;
 }
 
+export interface SentimentData {
+  sentimentScore: number;
+  label: "positive" | "negative" | "neutral";
+  confidence: number;
+  newsTitleSummary: string[];
+}
+
+export interface SystemCalibration {
+  idxWeight: number;
+  cryptoWeight: number;
+  globalAccuracyTracker: {
+    totalPredictions: number;
+    successfulPredictions: number;
+    overallAccuracy: number;
+  };
+}
+
 // Comprehensive Asset Assessment
 export interface ScannerAsset {
   ticker: string;
@@ -176,8 +194,14 @@ export interface HistoricalPrediction {
   assetClass: AssetClass;
   timestamp: number;
   priceAtPrediction: number;
+  initialPrice?: number;
   predictedProbability: number;
   predictedDirection: "BULLISH" | "BEARISH" | "NEUTRAL";
   actualOutcome?: number;
+  actualPrice?: number;
+  realizedPercent?: number;
+  success?: boolean;
+  auditedAt?: string;
   confidence: number;
+  marketRegime?: MarketRegimeType;
 }
