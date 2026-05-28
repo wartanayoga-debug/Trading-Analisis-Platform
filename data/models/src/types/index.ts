@@ -126,14 +126,6 @@ export interface RiskMetrics {
   invalidationLevel: number;
 }
 
-// Sentiment Analysis outputs
-export interface SentimentData {
-  sentimentScore: number;
-  label: "positive" | "negative" | "neutral";
-  confidence: number;
-  newsTitleSummary: string[];
-}
-
 // Comprehensive Asset Assessment
 export interface ScannerAsset {
   ticker: string;
@@ -156,6 +148,7 @@ export interface ScannerAsset {
   breakoutProbability: number;
   marketRegime: MarketRegimeType;
   manipulationWarning: boolean;
+  fakeBreakoutRisk?: boolean;
 
   entryZone: { min: number; max: number };
   stopLoss: number;
@@ -164,6 +157,7 @@ export interface ScannerAsset {
   trendDirection: "BULLISH" | "BEARISH" | "NEUTRAL";
 
   headlines?: string[];
+  newsTitleSummary?: string[];
   aiExplanation?: string;
   estimatedFutureCandles?: number[];
 
@@ -178,33 +172,12 @@ export interface ScannerAsset {
 // Memory / Audit
 export interface HistoricalPrediction {
   id: string;
-  timestamp: string;
   ticker: string;
   assetClass: AssetClass;
+  timestamp: number;
+  priceAtPrediction: number;
   predictedProbability: number;
   predictedDirection: "BULLISH" | "BEARISH" | "NEUTRAL";
-  initialPrice: number;
+  actualOutcome?: number;
   confidence: number;
-  marketRegime: MarketRegimeType;
-  actualPrice?: number;
-  realizedPercent?: number;
-  success?: boolean;
-  auditedAt?: string;
-}
-
-export interface SystemCalibration {
-  idxWeight: number;
-  cryptoWeight: number;
-  globalAccuracyTracker: {
-    totalPredictions: number;
-    successfulPredictions: number;
-    overallAccuracy: number;
-  };
-}
-
-export interface ScanResult {
-  scanTimestamp: string;
-  durationMs: number;
-  assetsScannedCount: number;
-  scannedAssets: ScannerAsset[];
 }
