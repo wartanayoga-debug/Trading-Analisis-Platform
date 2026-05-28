@@ -34,9 +34,10 @@ export class MemoryLearningEngine {
       if (openIndex === -1) {
         const hPred: HistoricalPrediction = {
           id: `${asset.ticker}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-          timestamp: new Date().toISOString(),
+          timestamp: Date.now(),
           ticker: asset.ticker,
           assetClass: asset.assetClass,
+          priceAtPrediction: asset.price,
           predictedProbability: asset.probability,
           predictedDirection: asset.trendDirection,
           initialPrice: asset.price,
@@ -78,8 +79,9 @@ export class MemoryLearningEngine {
         );
         if (recentCandles.length > 0) {
           const currentClose = recentCandles[recentCandles.length - 1].close;
+          const initialPrice = pred.initialPrice ?? pred.priceAtPrediction;
           const realizationPercent =
-            ((currentClose - pred.initialPrice) / pred.initialPrice) * 100;
+            ((currentClose - initialPrice) / initialPrice) * 100;
 
           // Score prediction
           const wasBullish = pred.predictedDirection === "BULLISH";
