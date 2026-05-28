@@ -1,5 +1,13 @@
 import { useEffect, useRef } from "react";
-import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+import {
+  createChart,
+  CandlestickSeries,
+  LineSeries,
+  type CandlestickData,
+  type LineData,
+  type Time,
+  type UTCTimestamp,
+} from "lightweight-charts";
 import { ScannerAsset, TechIndicators } from "../types";
 import { Maximize2, Activity, Layers, Network, Database } from "lucide-react";
 import { translations, Language } from "../utils/translations";
@@ -49,12 +57,12 @@ export function TerminalDashboard({
       wickDownColor: "#ef4444",
     });
 
-    const formattedData = candles.map((c) => ({
-      time: c.time / 1000,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
+    const formattedData: CandlestickData<Time>[] = candles.map((c) => ({
+      time: Math.floor(Number(c.time) / 1000) as UTCTimestamp,
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close),
     }));
 
     candleSeries.setData(formattedData);
@@ -70,13 +78,13 @@ export function TerminalDashboard({
         lineWidth: 1,
       });
       // Simulating indicator lines (constant for simple demo)
-      const upperData = formattedData.map((d) => ({
+      const upperData: LineData<Time>[] = formattedData.map((d) => ({
         time: d.time,
-        value: indicators.bbUpper,
+        value: Number(indicators.bbUpper),
       }));
-      const lowerData = formattedData.map((d) => ({
+      const lowerData: LineData<Time>[] = formattedData.map((d) => ({
         time: d.time,
-        value: indicators.bbLower,
+        value: Number(indicators.bbLower),
       }));
       bbUpperSeries.setData(upperData);
       bbLowerSeries.setData(lowerData);
