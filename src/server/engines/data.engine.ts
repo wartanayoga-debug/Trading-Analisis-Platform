@@ -92,7 +92,18 @@ export class MarketDataEngine {
     const interval = this.translateInterval(timeframe, "CRYPTO");
     const url = `https://api.binance.com/api/v3/klines?symbol=${ticker.toUpperCase()}&interval=${interval}&limit=${limit}`;
 
-    const response = await axios.get(url, { timeout: 10000 });
+    let response: any;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        response = await axios.get(url, { timeout: 20000 });
+        break;
+      } catch (err: any) {
+        retries--;
+        if (retries === 0) throw err;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
     const data: Array<any[]> = response.data;
 
     return data.map((k) => ({
@@ -125,13 +136,30 @@ export class MarketDataEngine {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
 
     // Dynamic fetch containing native user-agent details for resilience
-    const response = await axios.get(url, {
-      headers: {
-         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-         "Accept": "*/*"
-      },
-      timeout: 10000 // 10 seconds timeout
-    });
+    let response: any;
+    let retries = 3;
+    let lastError: any;
+
+    while (retries > 0) {
+      try {
+        response = await axios.get(url, {
+          headers: {
+             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+             "Accept": "*/*"
+          },
+          timeout: 20000 // 20 seconds timeout
+        });
+        break; // Success
+      } catch (err: any) {
+        lastError = err;
+        retries--;
+        if (retries === 0) {
+          throw err;
+        }
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
 
     const resJson = response.data;
     const result = resJson?.chart?.result?.[0];
