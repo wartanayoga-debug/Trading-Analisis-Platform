@@ -5,6 +5,7 @@ export interface ModelArtifact {
   metrics: {
     val_accuracy?: number;
     val_loss?: number;
+    val_mcc?: number;
     optuna_trial_id?: string;
   };
   storagePath: string; // e.g., "s3://models/..."
