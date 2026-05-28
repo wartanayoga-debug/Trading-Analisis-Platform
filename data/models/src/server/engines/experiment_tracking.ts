@@ -8,6 +8,7 @@ export interface ExperimentRun {
     f1Score: number;
     logLoss: number;
     sharpeRatio: number;
+    precision?: number;
   };
   status: "COMPLETED" | "FAILED" | "RUNNING";
 }
