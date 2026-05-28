@@ -64,7 +64,7 @@ export class MemoryLearningEngine {
     let newlyAuditedCount = 0;
 
     // We import Data Engine here to fetch real future candles to avoid circular dependency
-    const MarketDataEngine = require("./data.engine").MarketDataEngine;
+    const { MarketDataEngine } = await import("./data.engine");
     const dataEngine = MarketDataEngine.getInstance();
 
     for (const pred of openPredictions) {
