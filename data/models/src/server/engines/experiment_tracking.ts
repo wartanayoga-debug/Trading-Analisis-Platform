@@ -9,6 +9,7 @@ export interface ExperimentRun {
     logLoss: number;
     sharpeRatio: number;
     precision?: number;
+    recall?: number;
   };
   status: "COMPLETED" | "FAILED" | "RUNNING";
 }
